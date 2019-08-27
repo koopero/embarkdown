@@ -11,7 +11,8 @@ describe('barkdown', () => {
       loader, files
     })
 
-    console.log(result)
+    console.dir( result, { depth: 5 } )
+
   })
 
   it('will pass operational error trying to load non-existent file', async () => {
@@ -19,6 +20,8 @@ describe('barkdown', () => {
     let result = await barkdown( {
       loader, files
     })
+
+    // console.dir( result, { depth: 4 } )
     
     assert.equal( result.errors.length, 1 )
   })

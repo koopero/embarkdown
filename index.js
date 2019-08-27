@@ -1,1 +1,1 @@
-module.exports = require('./src/barkdown')
+module.exports = require('./src/ingest')
