@@ -1,0 +1,3 @@
+load: example.md
+meta: 
+  foo: bar

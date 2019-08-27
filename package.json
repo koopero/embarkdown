@@ -1,0 +1,19 @@
+{
+  "name": "barkdown",
+  "version": "0.0.1",
+  "description": "Crazy markdown loader",
+  "main": "index.js",
+  "license": "MIT",
+  "private": true,
+  "dependencies": {
+    "frontmatter": "^0.0.3",
+    "js-yaml": "^3.13.1",
+    "lodash": "^4.17.15",
+    "sections": "^1.0.0"
+  },
+  "devDependencies": {
+    "chai": "^4.2.0",
+    "fs-extra": "^8.1.0",
+    "mocha": "^6.2.0"
+  }
+}
