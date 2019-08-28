@@ -13,26 +13,64 @@ async function ingest( {
   files = [],
   loader = null
 } ) {
+  // Declarations 
   let errors = []
   let result = { errors, files: [], names: {}, chunks: [] }
   let names = result.names
+  let chunks = result.chunks
 
-  queueFile( file )
-  queueFile( files )
-
-  files = result.files
+  _.map( arguments, parseArgument )
 
   do {
-    var filesToLoad = _.filter( result.files, chunk => !chunk.loaded )
+    var filesToLoad = _.filter( chunks, chunk => chunk.file && !chunk.loaded )
     await Promise.all( _.map( filesToLoad, fetchFile ) )
-    await Promise.all( _.map( filesToLoad, parseFile ) )
+    await Promise.all( _.map( filesToLoad, parseContent ) )
   } while ( filesToLoad.length )
 
   return new Result( result  )
 
-  function addChunk( chunk ) {
-    result.chunks.push( chunk )
+  
+
+  function parseArgument( arg ) {
+    if ( _.isString( arg ) ) 
+      arg = { load: arg }
+
+    if ( _.isArrayLikeObject( arg ) )
+      return _.map( arg, parseArgument )
+
+    if ( _.isObject( arg ) )
+      parseChunk( arg )
+  }
+
+  function parseChunk( chunk, parent ) {
+    chunk.path = pathlib.resolve( chunk.path || chunk.name )
+    if ( parent && parent.file && parent.loaded ) {
+      chunk.file = parent.file
+      chunk.loaded = parent.loaded
+    } 
+
+    if ( chunks.indexOf( chunk ) == -1 )
+      chunks.push( chunk )
+
     queueLoadFromChunk( chunk )
+  }
+
+  function queueLoadFromChunk( chunk ) {
+    let { load } = chunk
+    if ( chunk.load ) {
+      addFileChunks( chunk.load )
+    }
+
+    function addFileChunks( file ) {
+      if ( _.isArrayLikeObject( file ) )
+        return _.map( file, addFileChunks )
+
+      let existing = _.find( chunks, chunk => chunk.file == file )
+      if ( existing )
+        return 
+
+      parseChunk( { file }, chunk )
+    }
   }
 
   function mungeName( str ) {
@@ -42,7 +80,7 @@ async function ingest( {
   }
 
   function uniqueName( title ) {
-    let str = mungeName( title )
+    let str = mungeName( title || 'anon' ) || 'anon'
     let index = 0 
     do {
       var check = str
@@ -56,16 +94,9 @@ async function ingest( {
     return check
   }
 
-  function queueFile( file ) {
-    if ( _.isArray( file ) ) {
-      _.map( file, queueFile )
-    } else if ( _.isString( file ) && file ) {
-      if ( !_.find( result.files, test => test.file == file ) )
-        result.files.push( { file } )
-    }
-  }
 
-  async function parseFile( chunk ) {
+
+  async function parseContent( chunk ) {
     let { extension, content } = chunk
 
     if ( !content )
@@ -95,9 +126,7 @@ async function ingest( {
       chunk.error = addError( { file, detail } )
     }
 
-    addChunk( chunk )
-    addSubChunks( chunk )
-
+    parseChunk( chunk )
   }
 
   function addSubChunks( chunk ) {
@@ -115,7 +144,7 @@ async function ingest( {
   }
 
   function addSubChunk( chunk, parent, path ) {
-    chunk.path = pathlib.resolve( parent.path, path, chunk.path ) 
+    // chunk.path = pathlib.resolve( parent.path, path, chunk.path ) 
     addChunk( chunk )
   }
 
@@ -123,19 +152,24 @@ async function ingest( {
     let { file, content } = chunk
     let front = parseFrontmatter( content )
 
+    hoistChunkData( chunk, front.data )
     chunk.data = _.merge( chunk.data || {}, front.data )
+
+    parseChunk( chunk )
 
     let { sections } = parseSections( front.content )
     let hoistSection 
 
     // Pre-process sections
+    var parentPath = []
     sections = _.map( sections, ( section ) => {
-      let content = section.body
+      let { body, level, title } = section
+
 
       // Add trailing linebreak to ensure frontmatter parsing for blank content
-      content = content + '\r\n'
-      let front = parseFrontmatter( content )
-      let result = _.pick( section, ['title','level'] )
+      body = body + '\r\n'
+      let front = parseFrontmatter( body )
+      let child = _.pick( section, ['title','level'] )
 
       if ( !section.count && !section.level ) {
         // First section, pre-header.
@@ -143,46 +177,56 @@ async function ingest( {
         return 
       } 
       
-      result.data = front.data
-      result.markdown = front.content  
-      result.order = section.count
-      
-      if ( result.title )
-        result.name = uniqueName( result.title )
-      else 
-        result.name = ''
-      
-      // queueLoadFromChunk( result )
-      addChunk( result )
-      addSubChunks( result )
+      hoistChunkData( child, front.data )
 
-      return result
+      while( parentPath.length < level ) {
+        parentPath.push( uniqueName() )
+      }
+
+      child.name = uniqueName( child.title )
+      let path = pathlib.resolve( parentPath[level], child.path, child.name )
+      child.path = pathlib.resolve( chunk.path, path )
+      parentPath[level+1] = path
+
+      child.data = front.data
+      child.markdown = front.content  
+      child.order = section.count
+      child.type = child.type || 'markdown'
+      
+
+      // queueLoadFromChunk( child )
+      parseChunk( child, chunk )
+      // addSubChunks( child )
+
+      return child
     })
     sections = _.filter( sections )
 
     if ( hoistSection ) {
       chunk.markdown = hoistSection.string
     }
-
-    addChunk( chunk )
-    addSubChunks( chunk )
-
-    chunk.children = sections
+    // addSubChunks( chunk )
+    // chunk.children = sections
   }
 
-  function hoistChunkData( chunk ) {
-    
+  function hoistChunkData( chunk, data ) {
+    data = data || chunk.data
+    _.merge( chunk, _.omit( data, ['file','loaded','data' ] ) )
   }
 
-  function queueLoadFromChunk( chunk ) {
-    let { data } = chunk
-    if ( data && data.load ) {
-      queueFile( data.load )
-      delete data.load
-    }
+  function findLoader( chunk ) {
+    if ( _.isFunction( chunk.loader ) )
+      return chunk.loader
+
+    if ( chunk.parent )
+      return findLoader( chunk.parent )
+
+    return require('./loader')
   }
 
   async function fetchFile( chunk ) {
+    let loader = findLoader( chunk )
+
     chunk.loaded = true
 
     let { file } = chunk
@@ -194,6 +238,7 @@ async function ingest( {
     try {
       content = await loader( file )
     } catch ( detail ) {
+      throw detail 
       let error = addError( { detail } )
       chunk.error = true 
       return chunk

@@ -1,14 +1,20 @@
 {
   "name": "embarkdown",
-  "version": "0.0.1",
-  "description": "Crazy markdown / YAML loader",
+  "version": "0.0.2",
+  "description": "High-level Markdown and YAML parser and queryable compiler.",
   "main": "index.js",
   "license": "MIT",
   "private": true,
+  "scripts": {
+    "lint": "eslint .",
+    "test": "mocha -b",
+    "develop": "mocha -w -b"
+  },
   "dependencies": {
     "frontmatter": "^0.0.3",
     "js-yaml": "^3.13.1",
     "lodash": "^4.17.15",
+    "searchjs": "^1.0.2",
     "sections": "^1.0.0"
   },
   "devDependencies": {
@@ -16,5 +22,7 @@
     "eslint": "^6.2.2",
     "fs-extra": "^8.1.0",
     "mocha": "^6.2.0"
-  }
+  },
+  "repository": "https://github.com/koopero/embarkdown",
+  "author": "Samm Zuest Cooper <samm@hfour.ca>"
 }
