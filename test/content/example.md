@@ -1,5 +1,8 @@
 ---
 meta: Preheader
+chunks:
+  /foo:
+    mega: lomart
 ---
 Pre-header.
 

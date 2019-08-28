@@ -1,7 +1,7 @@
 {
-  "name": "barkdown",
+  "name": "embarkdown",
   "version": "0.0.1",
-  "description": "Crazy markdown loader",
+  "description": "Crazy markdown / YAML loader",
   "main": "index.js",
   "license": "MIT",
   "private": true,

@@ -4,8 +4,10 @@ class Result {
   }
 
   renderNavTree( {
-    
-  } ) {
+    path = [],
+    highlight = [],
+    levels = 999,
+  } = {} ) {
 
   }
 }

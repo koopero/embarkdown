@@ -1,7 +1,7 @@
 const assert = require('chai').assert
 const deepeq = assert.deepEqual
+const { resolve } = require('../src/path')
 
-const resolve = require('../src/path')
 describe('path', () => {
   it('will do simple resolves', () => {
     deepeq( resolve(), [] )
@@ -15,6 +15,10 @@ describe('path', () => {
   })
 
   it('go up a level with dots', () => {
+    deepeq( resolve('foo/bar', '../baz'), ['foo', 'baz'] )
+  })
+
+  it('ignore single dots', () => {
     deepeq( resolve('foo/bar', '../baz'), ['foo', 'baz'] )
   })
 

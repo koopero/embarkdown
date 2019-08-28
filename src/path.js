@@ -43,4 +43,4 @@ function resolve() {
   }
 }
 
-module.exports = resolve
+module.exports = { resolve }

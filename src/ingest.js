@@ -3,6 +3,7 @@ module.exports = ingest
 const posixpathlib = require('path').posix
 const _ = require('lodash')
 const YAML = require('js-yaml')
+const pathlib = require('./path')
 const parseSections = require('sections').parse
 const parseFrontmatter = require('frontmatter')
 const Result = require('./Result')
@@ -31,6 +32,7 @@ async function ingest( {
 
   function addChunk( chunk ) {
     result.chunks.push( chunk )
+    queueLoadFromChunk( chunk )
   }
 
   function mungeName( str ) {
@@ -93,7 +95,27 @@ async function ingest( {
       chunk.error = addError( { file, detail } )
     }
 
-    queueLoadFromChunk( chunk )
+    addChunk( chunk )
+    addSubChunks( chunk )
+
+  }
+
+  function addSubChunks( chunk ) {
+    let subChunks = _.get( chunk, 'data.chunks' )
+
+    if ( subChunks ) {
+      if ( _.isArrayLikeObject( subChunks ) )
+        _.map( subChunks, sub => addSubChunk( sub, chunk ) )
+      else if ( _.isObject( subChunks ) )
+        _.map( subChunks, ( sub, path ) => addSubChunk( sub, chunk, path ) )
+
+      delete chunk.data.chunks
+    }
+
+  }
+
+  function addSubChunk( chunk, parent, path ) {
+    chunk.path = pathlib.resolve( parent.path, path, chunk.path ) 
     addChunk( chunk )
   }
 
@@ -103,11 +125,10 @@ async function ingest( {
 
     chunk.data = _.merge( chunk.data || {}, front.data )
 
-    addChunk( chunk )
-
     let { sections } = parseSections( front.content )
+    let hoistSection 
 
-
+    // Pre-process sections
     sections = _.map( sections, ( section ) => {
       let content = section.body
 
@@ -118,26 +139,39 @@ async function ingest( {
 
       if ( !section.count && !section.level ) {
         // First section, pre-header.
-        result.title = ''
-        // result.preheading = section
-        result.markdown = section.string
-      } else { 
-        result.data = front.data
-        result.markdown = front.content  
-      }
-
+        hoistSection = section
+        return 
+      } 
+      
+      result.data = front.data
+      result.markdown = front.content  
+      result.order = section.count
+      
       if ( result.title )
         result.name = uniqueName( result.title )
       else 
         result.name = ''
       
-      queueLoadFromChunk( result )
+      // queueLoadFromChunk( result )
       addChunk( result )
+      addSubChunks( result )
 
       return result
     })
+    sections = _.filter( sections )
 
-    chunk.children = _.filter( sections )
+    if ( hoistSection ) {
+      chunk.markdown = hoistSection.string
+    }
+
+    addChunk( chunk )
+    addSubChunks( chunk )
+
+    chunk.children = sections
+  }
+
+  function hoistChunkData( chunk ) {
+    
   }
 
   function queueLoadFromChunk( chunk ) {
