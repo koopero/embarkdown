@@ -27,15 +27,15 @@ describe('barkdown', () => {
   })
 
   it('will do a query', async () => {
-    const file = 'minimal.md'
+    const file = 'example.yaml'
     let data = await barkdown( { loader, file } )
 
     let sub = data.query( {
-      title: 'Section'
+      // title: 'Section'
     } )
 
     let chunks = sub.chunks
-    console.dir( chunks, { depth: 5 } )
+    console.dir( sub.tree, { depth: 6 } )
 
   })
 })

@@ -44,7 +44,7 @@ async function ingest( {
 
   function parseChunk( chunk, parent ) {
     chunk.path = pathlib.resolve( chunk.path || chunk.name )
-    if ( parent && parent.file && parent.loaded ) {
+    if ( parent && parent.file && parent.loaded && !chunk.file ) {
       chunk.file = parent.file
       chunk.loaded = parent.loaded
     } 
@@ -56,6 +56,11 @@ async function ingest( {
   }
 
   function queueLoadFromChunk( chunk ) {
+    let loader = findLoader( chunk )
+    let dir
+    if ( chunk.file ) 
+      dir = loader.dirname( chunk.file )
+      
     let { load } = chunk
     if ( chunk.load ) {
       addFileChunks( chunk.load )
@@ -64,6 +69,8 @@ async function ingest( {
     function addFileChunks( file ) {
       if ( _.isArrayLikeObject( file ) )
         return _.map( file, addFileChunks )
+
+      file = loader.resolve( dir, file )
 
       let existing = _.find( chunks, chunk => chunk.file == file )
       if ( existing )
@@ -126,6 +133,7 @@ async function ingest( {
       chunk.error = addError( { file, detail } )
     }
 
+    hoistChunkData( chunk, chunk.data )
     parseChunk( chunk )
   }
 
@@ -188,6 +196,7 @@ async function ingest( {
       child.path = pathlib.resolve( chunk.path, path )
       parentPath[level+1] = path
 
+      child.markdownHeading = _.repeat('#',level)+' '+child.title
       child.data = front.data
       child.markdown = front.content  
       child.order = section.count
@@ -221,7 +230,11 @@ async function ingest( {
     if ( chunk.parent )
       return findLoader( chunk.parent )
 
-    return require('./loader')
+    if ( this.loader )
+      return this.loader
+
+    let loader = this.loader = new ingest.defaultLoader()
+    return loader
   }
 
   async function fetchFile( chunk ) {
@@ -230,13 +243,11 @@ async function ingest( {
     chunk.loaded = true
 
     let { file } = chunk
-    let extension = posixpathlib.extname( file )
-
-    extension = _.trimStart( extension, '.' ).toLowerCase()
+    let extension = loader.extname( file )
     let content
     
     try {
-      content = await loader( file )
+      content = await loader.load( file )
     } catch ( detail ) {
       throw detail 
       let error = addError( { detail } )
