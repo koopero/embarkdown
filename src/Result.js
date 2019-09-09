@@ -32,13 +32,17 @@ class Result {
 
       let page = {}
 
-      // for ( let parent of parents )
-      //   merge( page, parent )
+      for ( let parent of parents )
+        mergeData( page, parent )
 
       for ( let index in leaf )
         merge( page, leaf[index], !!index )
 
       return page
+
+      function mergeData( dst, src ) {
+        dst.data = _.merge( {}, dst.data, src.data )
+      }
 
       function merge( dst, src, isSub ) {
         _.map( src, mergeKey )
