@@ -4,7 +4,7 @@ const path = require('path')
 const barkdown = require('../index')
 const loader = async ( file ) => fs.readFile( path.resolve( __dirname, 'content', file ) )
 
-describe('barkdown', () => {
+xdescribe('barkdown', () => {
   it('will load a few files', async () => {
     const files = [ 'example.yaml' ]
     let result = await barkdown( {

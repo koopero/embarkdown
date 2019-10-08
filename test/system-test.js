@@ -5,7 +5,7 @@ const path = require('path')
 const barkdown = require('../index')
 const loader = async ( file ) => fs.readFile( path.resolve( __dirname, 'content', file ) )
 
-describe('barkdown', () => {
+xdescribe('barkdown', () => {
   it('will load chunks from args', async () => {
     let chunk = { foo: 'bar' }
     let result = await barkdown( chunk )
