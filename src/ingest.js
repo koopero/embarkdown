@@ -230,10 +230,8 @@ async function ingest( {
     if ( chunk.parent )
       return findLoader( chunk.parent )
 
-    if ( this.loader )
-      return this.loader
 
-    let loader = this.loader = new ingest.defaultLoader()
+    let loader = new ingest.defaultLoader()
     return loader
   }
 
